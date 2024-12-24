@@ -211,5 +211,22 @@ WeatherWidget::setLabelContent()
       QString("image:url(:/%1/%2.png)")
         .arg(now)
         .arg(WeatherTool::getWeather(forecast[i].type)));
+
+    if (forecast[i].quality >= 0 && forecast[i].quality <= 50) {
+      forecastQualityList[i]->setText("优质");
+      forecastQualityList[i]->setStyleSheet("color: rgb(0, 255, 0);");
+    } else if (forecast[i].quality > 50 && forecast[i].quality <= 100) {
+      forecastQualityList[i]->setText("良好");
+      forecastQualityList[i]->setStyleSheet("color: rgb(255, 255, 0);");
+    } else if (forecast[i].quality > 100 && forecast[i].quality <= 150) {
+      forecastQualityList[i]->setText("轻度污染");
+      forecastQualityList[i]->setStyleSheet("color: rgb(255, 170, 0);");
+    } else if (forecast[i].quality > 150 && forecast[i].quality <= 200) {
+      forecastQualityList[i]->setText("重度污染");
+      forecastQualityList[i]->setStyleSheet("color: rgb(255, 0, 0);");
+    } else {
+      forecastQualityList[i]->setText("严重污染");
+      forecastQualityList[i]->setStyleSheet("color: rgb(170, 0, 0);");
+    }
   }
 }

@@ -28,7 +28,7 @@
 QLabel {
 	font: 25 10pt &quot;微软雅黑&quot;;
 	border-radius:4px;
-	background-color: rgba(60, 60, 60, 130);
+	background-color: rgba(60, 60, 30, 100);
 	color: rgb(255, 255, 255);
 }
 
@@ -996,13 +996,13 @@ background-color: rgba(60, 60, 60, 0);
       <widget class="QLabel" name="label_4">
        <property name="minimumSize">
         <size>
-         <width>0</width>
+         <width>25</width>
          <height>25</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
-         <width>16777215</width>
+         <width>25</width>
          <height>25</height>
         </size>
        </property>
