@@ -13,5 +13,7 @@ set(ResouceFile icons/icons.qrc images/images.qrc weatherIcons/weatypeico.qrc)
 
 add_executable(WeatherApp main.cpp weather_widget.cpp ${ResouceFile})
 
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
-target_link_libraries(WeatherApp PRIVATE Qt5::Widgets)
+find_package(Qt5 COMPONENTS Widgets Network REQUIRED)
+target_link_libraries(WeatherApp PRIVATE Qt5::Widgets Qt5::Network)
+
+file(COPY_FILE ./city_code.json ${CMAKE_BINARY_DIR}/city_code.json)
