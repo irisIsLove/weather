@@ -304,6 +304,12 @@ color: rgb(85, 255, 0);</string>
          <height>0</height>
         </size>
        </property>
+       <property name="styleSheet">
+        <string notr="true">border-radius: 5px;
+color: rgb(255, 255, 255);
+background-color: rgba(60, 60, 30, 0);
+font: 9pt &quot;Arial&quot;;</string>
+       </property>
       </widget>
      </item>
     </layout>
