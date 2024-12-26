@@ -32,6 +32,8 @@ protected:
 private slots:
   void onExitApp();
   void onReplyFinished(QNetworkReply* reply);
+  void onSearchCity();
+  void onRefreshWeather();
 
 private:
   void getWeatherInfo(QNetworkAccessManager* manager);

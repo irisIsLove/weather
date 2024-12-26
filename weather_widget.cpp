@@ -9,8 +9,7 @@
 #include <QPainter>
 #include <QPainter>
 #include <QStyleOption>
-
-#include <numeric>
+#include <QTimer>
 
 static const QPoint sun[2] = { QPoint(20, 75), QPoint(130, 75) };
 static const QRect sunRiseSet[2] = { QRect(0, 80, 50, 20),
@@ -73,6 +72,17 @@ WeatherWidget::WeatherWidget(QWidget* parent)
 
   ui->lbSunRiseSet->installEventFilter(this);
   ui->lbCurve->installEventFilter(this);
+
+  QTimer* sunTimer = new QTimer(this);
+  connect(sunTimer, &QTimer::timeout, [this]() { ui->lbSunRiseSet->update(); });
+  sunTimer->start(1000);
+
+  connect(
+    ui->tbSearch, &QToolButton::clicked, this, &WeatherWidget::onSearchCity);
+  connect(ui->tbRefresh,
+          &QToolButton::clicked,
+          this,
+          &WeatherWidget::onRefreshWeather);
 }
 
 WeatherWidget::~WeatherWidget()
@@ -129,6 +139,21 @@ WeatherWidget::onReplyFinished(QNetworkReply* reply)
 
   QByteArray bytes = reply->readAll();
   parseJson(bytes);
+}
+
+void
+WeatherWidget::onSearchCity()
+{
+  m_tmpCity = m_city;
+  m_city = ui->leCity->text();
+  getWeatherInfo(m_manager);
+}
+
+void
+WeatherWidget::onRefreshWeather()
+{
+  getWeatherInfo(m_manager);
+  ui->lbCurve->update();
 }
 
 void
@@ -330,8 +355,8 @@ WeatherWidget::paintSunRiseSet()
 void
 WeatherWidget::paintCurve()
 {
-  int tempMax = std::numeric_limits<int>::max();
-  int tempMin = std::numeric_limits<int>::min();
+  int tempMax = std::numeric_limits<int>::min();
+  int tempMin = std::numeric_limits<int>::max();
   int high[6], low[6];
   for (int i = 0; i < 6; ++i) {
     QString temp = forecastHighList[i]->text();
@@ -385,10 +410,10 @@ WeatherWidget::paintCurve()
   // 低温
   painter.save();
   // 昨天->今天
-  pen.setColor(QColor(255, 255, 0));
+  pen.setColor(QColor(0, 255, 255));
   pen.setStyle(Qt::DotLine);
   painter.setPen(pen);
-  painter.setBrush(QColor(255, 255, 0));
+  painter.setBrush(QColor(0, 255, 255));
   painter.drawEllipse(QPoint(pointX[0], pointLY[0]), ORIGIN_SIZE, ORIGIN_SIZE);
   painter.drawEllipse(QPoint(pointX[1], pointLY[1]), ORIGIN_SIZE, ORIGIN_SIZE);
   painter.drawLine(pointX[0], pointLY[0], pointX[1], pointLY[1]);
