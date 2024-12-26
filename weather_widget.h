@@ -1,8 +1,8 @@
 #ifndef WEATHERWIDGETS_H
 #define WEATHERWIDGETS_H
 
-#include "weather_tool.h"
 #include "weather_data.h"
+#include "weather_tool.h"
 
 #include <QWidget>
 
@@ -27,6 +27,7 @@ protected:
   void contextMenuEvent(QContextMenuEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
   void mousePressEvent(QMouseEvent* event) override;
+  bool eventFilter(QObject* watched, QEvent* event) override;
 
 private slots:
   void onExitApp();
@@ -36,6 +37,8 @@ private:
   void getWeatherInfo(QNetworkAccessManager* manager);
   void parseJson(const QByteArray& data);
   void setLabelContent();
+  void paintSunRiseSet();
+  void paintCurve();
 
 private:
   Ui::Weather* ui = nullptr;

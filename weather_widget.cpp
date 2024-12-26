@@ -1,13 +1,27 @@
-#include "weather_widget.h"
 #include "ui_weather_widget.h"
+#include "weather_widget.h"
 
 #include <QMenu>
-#include <QMouseEvent>
-#include <QStyleOption>
-#include <QPainter>
-#include <QNetworkAccessManager>
 #include <QMessageBox>
+#include <QMouseEvent>
+#include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QPainter>
+#include <QPainter>
+#include <QStyleOption>
+
+#include <numeric>
+
+static const QPoint sun[2] = { QPoint(20, 75), QPoint(130, 75) };
+static const QRect sunRiseSet[2] = { QRect(0, 80, 50, 20),
+                                     QRect(100, 80, 50, 20) };
+static const QRect rect[2] = {
+  QRect(25, 25, 100, 100), // 虚线圆弧
+  QRect(50, 80, 50, 20)    // “日出日落”文本
+};
+
+static constexpr int TEMPERATURE_STARTING_COORDINATE = 60;
+static constexpr int ORIGIN_SIZE = 3;
 
 WeatherWidget::WeatherWidget(QWidget* parent)
   : QWidget(parent)
@@ -56,6 +70,9 @@ WeatherWidget::WeatherWidget(QWidget* parent)
           this,
           &WeatherWidget::onReplyFinished);
   getWeatherInfo(m_manager);
+
+  ui->lbSunRiseSet->installEventFilter(this);
+  ui->lbCurve->installEventFilter(this);
 }
 
 WeatherWidget::~WeatherWidget()
@@ -80,6 +97,17 @@ void
 WeatherWidget::mousePressEvent(QMouseEvent* event)
 {
   m_pos = event->globalPos() - pos();
+}
+
+bool
+WeatherWidget::eventFilter(QObject* watched, QEvent* event)
+{
+  if (watched == ui->lbSunRiseSet && event->type() == QEvent::Paint) {
+    paintSunRiseSet();
+  } else if (watched == ui->lbCurve && event->type() == QEvent::Paint) {
+    paintCurve();
+  }
+  return QWidget::eventFilter(watched, event);
 }
 
 void
@@ -229,4 +257,149 @@ WeatherWidget::setLabelContent()
       forecastQualityList[i]->setStyleSheet("color: rgb(170, 0, 0);");
     }
   }
+
+  ui->lbCurve->update();
+}
+
+void
+WeatherWidget::paintSunRiseSet()
+{
+  QPainter painter(ui->lbSunRiseSet);
+  painter.setRenderHint(QPainter::Antialiasing);
+
+  // 绘制横线
+  painter.save();
+  QPen pen = painter.pen();
+  pen.setWidthF(0.5f);
+  pen.setColor(Qt::yellow);
+  painter.setPen(pen);
+  painter.drawLine(sun[0], sun[1]);
+  painter.restore();
+
+  // 绘制日出日落时间
+  painter.save();
+  painter.setFont(QFont("Microsoft YaHei", 8, QFont::Normal));
+  painter.setPen(Qt::white);
+  if (!today.sunrise.isEmpty() && !today.sunset.isEmpty()) {
+    painter.drawText(sunRiseSet[0], Qt::AlignHCenter, today.sunrise);
+    painter.drawText(sunRiseSet[1], Qt::AlignHCenter, today.sunset);
+  }
+  painter.drawText(::rect[1], Qt::AlignHCenter, "日出日落");
+  painter.restore();
+
+  // 绘制弧形
+  painter.save();
+  pen.setWidthF(0.5f);
+  pen.setStyle(Qt::DotLine);
+  pen.setColor(Qt::green);
+  painter.setPen(pen);
+  painter.drawArc(::rect[0], 0 * 16, 180 * 16);
+  if (!today.sunrise.isEmpty() && !today.sunset.isEmpty()) {
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(255, 85, 0, 100));
+
+    int startAngle, spanAngle;
+    if (QTime::currentTime() > QTime::fromString(today.sunset, "HH:mm")) {
+      startAngle = 0 * 16;
+      spanAngle = 180 * 16;
+    } else {
+      static int sunrise =
+        QTime::fromString(today.sunrise, "HH:mm").hour() * 60 +
+        QTime::fromString(today.sunrise, "HH:mm").minute();
+      static int sunset = QTime::fromString(today.sunset, "HH:mm").hour() * 60 +
+                          QTime::fromString(today.sunset, "HH:mm").minute();
+
+      int currentTime =
+        QTime::currentTime().hour() * 60 + QTime::currentTime().minute();
+
+      startAngle =
+        (static_cast<double>(sunset - currentTime) / (sunset - sunrise)) * 180 *
+        16;
+      spanAngle =
+        (static_cast<double>(currentTime - sunrise) / (sunset - sunrise)) *
+        180 * 16;
+
+      if (startAngle >= 0 && spanAngle >= 0) {
+        painter.drawPie(::rect[0], startAngle, spanAngle);
+      }
+    }
+  }
+  painter.restore();
+}
+
+void
+WeatherWidget::paintCurve()
+{
+  int tempMax = std::numeric_limits<int>::max();
+  int tempMin = std::numeric_limits<int>::min();
+  int high[6], low[6];
+  for (int i = 0; i < 6; ++i) {
+    QString temp = forecastHighList[i]->text();
+    high[i] = temp.left(temp.length() - 1).toInt();
+    tempMax = std::max(tempMax, high[i]);
+    tempMin = std::min(tempMin, high[i]);
+
+    temp = forecastLowList[i]->text();
+    low[i] = temp.left(temp.length() - 1).toInt();
+    tempMax = std::max(tempMax, low[i]);
+    tempMin = std::min(tempMin, low[i]);
+  }
+  int tempAvg = (tempMax + tempMin) / 2;
+  int spanSize = 100 / (tempMax - tempMin);
+
+  int pointX[6] = { 35, 105, 175, 245, 315, 385 };
+  int pointHY[6], pointLY[6];
+  for (int i = 0; i < 6; ++i) {
+    pointHY[i] =
+      TEMPERATURE_STARTING_COORDINATE - ((high[i] - tempAvg) * spanSize);
+    pointLY[i] =
+      TEMPERATURE_STARTING_COORDINATE + ((tempAvg - low[i]) * spanSize);
+  }
+
+  QPainter painter(ui->lbCurve);
+  painter.setRenderHint(QPainter::Antialiasing);
+  QPen pen = painter.pen();
+  pen.setWidth(1);
+
+  // 高温
+  painter.save();
+  // 昨天->今天
+  pen.setColor(QColor(255, 170, 0));
+  pen.setStyle(Qt::DotLine);
+  painter.setPen(pen);
+  painter.setBrush(QColor(255, 170, 0));
+  painter.drawEllipse(QPoint(pointX[0], pointHY[0]), ORIGIN_SIZE, ORIGIN_SIZE);
+  painter.drawEllipse(QPoint(pointX[1], pointHY[1]), ORIGIN_SIZE, ORIGIN_SIZE);
+  painter.drawLine(pointX[0], pointHY[0], pointX[1], pointHY[1]);
+  // 今天->后面几天
+  pen.setStyle(Qt::SolidLine);
+  pen.setWidth(1);
+  painter.setPen(pen);
+  for (int i = 1; i < 5; ++i) {
+    painter.drawEllipse(
+      QPoint(pointX[i + 1], pointHY[i + 1]), ORIGIN_SIZE, ORIGIN_SIZE);
+    painter.drawLine(pointX[i], pointHY[i], pointX[i + 1], pointHY[i + 1]);
+  }
+  painter.restore();
+
+  // 低温
+  painter.save();
+  // 昨天->今天
+  pen.setColor(QColor(255, 255, 0));
+  pen.setStyle(Qt::DotLine);
+  painter.setPen(pen);
+  painter.setBrush(QColor(255, 255, 0));
+  painter.drawEllipse(QPoint(pointX[0], pointLY[0]), ORIGIN_SIZE, ORIGIN_SIZE);
+  painter.drawEllipse(QPoint(pointX[1], pointLY[1]), ORIGIN_SIZE, ORIGIN_SIZE);
+  painter.drawLine(pointX[0], pointLY[0], pointX[1], pointLY[1]);
+  // 今天->后面几天
+  pen.setStyle(Qt::SolidLine);
+  pen.setWidth(1);
+  painter.setPen(pen);
+  for (int i = 1; i < 5; ++i) {
+    painter.drawEllipse(
+      QPoint(pointX[i + 1], pointLY[i + 1]), ORIGIN_SIZE, ORIGIN_SIZE);
+    painter.drawLine(pointX[i], pointLY[i], pointX[i + 1], pointLY[i + 1]);
+  }
+  painter.restore();
 }

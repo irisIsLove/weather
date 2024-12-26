@@ -1,12 +1,12 @@
 #ifndef WEATHERTOOL_H
 #define WEATHERTOOL_H
 
-#include <QMap>
 #include <QFile>
-#include <QJsonDocument>
 #include <QJsonArray>
-#include <QJsonValue>
+#include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonValue>
+#include <QMap>
 
 class WeatherTool
 {
